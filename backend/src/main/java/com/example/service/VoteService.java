@@ -1,43 +1,65 @@
 package com.example.service;
 
-import org.springframework.stereotype.Service;
+import java.time.LocalDateTime;
 
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.example.dto.VoteSlipDTO;
+import com.example.entity.Leader;
 import com.example.entity.User;
-import com.example.entity.Vote;
+import com.example.repository.LeaderRepository;
 import com.example.repository.UserRepository;
-import com.example.repository.VoteRepository;
+import com.example.security.AadhaarEncryptionService;
 
 @Service
 public class VoteService {
 
-    private final VoteRepository voteRepo;
-    private final UserRepository userRepo;
+    private final UserRepository userRepository;
+    private final LeaderRepository leaderRepository;
+    private final AadhaarEncryptionService encryptionService;
 
-    // 🔥 Constructor Injection (IMPORTANT)
-    public VoteService(VoteRepository voteRepo,
-                       UserRepository userRepo) {
-        this.voteRepo = voteRepo;
-        this.userRepo = userRepo;
+    public VoteService(UserRepository userRepository,
+                       LeaderRepository leaderRepository,
+                       AadhaarEncryptionService encryptionService) {
+        this.userRepository = userRepository;
+        this.leaderRepository = leaderRepository;
+        this.encryptionService = encryptionService;
     }
 
-    public String castVote(Long userId, Long leaderId) {
+    @Transactional
+    public VoteSlipDTO castVote(String email, Long leaderId) {
 
-        User user = userRepo.findById(userId)
+        User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         if (user.isHasVoted()) {
-            return "You have already voted!";
+            throw new RuntimeException("You have already voted!");
         }
 
-        Vote vote = new Vote();
-        vote.setUserId(user.getId());
-        vote.setLeaderId(leaderId);
+        Leader leader = leaderRepository.findById(leaderId)
+                .orElseThrow(() -> new RuntimeException("Leader not found"));
 
-        voteRepo.save(vote);
+        leader.setVotes(leader.getVotes() + 1);
+        leaderRepository.save(leader);
 
         user.setHasVoted(true);
-        userRepo.save(user);
+        userRepository.save(user);
 
-        return "Vote Cast Successfully!";
+        String decryptedAadhaar =
+                encryptionService.decrypt(user.getAadhaarNumber());
+
+        String maskedAadhaar =
+                "XXXX-XXXX-" + decryptedAadhaar.substring(8);
+
+        VoteSlipDTO slip = new VoteSlipDTO();
+        slip.setVoteId("VOTE-" + System.currentTimeMillis());
+        slip.setVoterEmail(email);
+        slip.setLeaderName(leader.getName());
+        slip.setParty(leader.getParty());
+        slip.setVotedAt(LocalDateTime.now());
+        slip.setAadhaar(maskedAadhaar);
+
+        return slip;
     }
 }

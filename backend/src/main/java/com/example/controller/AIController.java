@@ -1,35 +1,24 @@
 package com.example.controller;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.example.entity.Leader;
-import com.example.service.AIService;
-
+import com.example.service.OpenAIService;
 
 @RestController
 @RequestMapping("/ai")
 @CrossOrigin(origins = "http://localhost:3000")
 public class AIController {
 
-    private final AIService aiService;
+    @Autowired
+    private OpenAIService openAIService;
 
-    public AIController(AIService aiService) {
-        this.aiService = aiService;
-    }
-
-    @PostMapping("/recommend")
-    public Leader recommend(
-            @RequestParam int w1,
-            @RequestParam int w2,
-            @RequestParam int w3) {
-
-        return aiService.recommend(w1, w2, w3);
-
-        
+    @PostMapping("/ask")
+    public String askAI(@RequestBody String question) {
+        return openAIService.askAI(question);
     }
 }
-
