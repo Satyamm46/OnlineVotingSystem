@@ -15,6 +15,7 @@ public class OpenAIService {
 
     private final WebClient webClient = WebClient.builder()
             .baseUrl("https://openrouter.ai/api/v1")
+            .defaultHeader("Content-Type", "application/json")
             .build();
 
     public String askAI(String question) {
